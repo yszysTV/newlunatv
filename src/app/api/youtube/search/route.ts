@@ -113,6 +113,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q');
   const contentType = searchParams.get('contentType') || 'all';
+  const order = searchParams.get('order') || 'relevance';
   
   if (!query) {
     return NextResponse.json({ error: '搜索关键词不能为空' }, { status: 400 });
@@ -145,8 +146,8 @@ export async function GET(request: NextRequest) {
     const YOUTUBE_CACHE_TIME = 60 * 60; // 60分钟（秒）
     const enabledRegionsStr = (youtubeConfig.enabledRegions || []).sort().join(',') || 'none';
     const enabledCategoriesStr = (youtubeConfig.enabledCategories || []).sort().join(',') || 'none';
-    // 缓存key包含功能状态、演示模式、最大结果数、内容类型，确保配置变化时缓存隔离
-    const cacheKey = `youtube-search-${youtubeConfig.enabled}-${youtubeConfig.enableDemo}-${maxResults}-${encodeURIComponent(query)}-${contentType}-${enabledRegionsStr}-${enabledCategoriesStr}`;
+    // 缓存key包含功能状态、演示模式、最大结果数、内容类型、排序，确保配置变化时缓存隔离
+    const cacheKey = `youtube-search-${youtubeConfig.enabled}-${youtubeConfig.enableDemo}-${maxResults}-${encodeURIComponent(query)}-${contentType}-${order}-${enabledRegionsStr}-${enabledCategoriesStr}`;
     
     console.log(`🔍 检查YouTube搜索缓存: ${cacheKey}`);
     
@@ -231,7 +232,7 @@ export async function GET(request: NextRequest) {
       `part=snippet&` +
       `type=video&` +
       `maxResults=${maxResults}&` +
-      `order=relevance`;
+      `order=${order}`;
 
     const response = await fetch(searchUrl);
 

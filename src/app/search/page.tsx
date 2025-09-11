@@ -64,6 +64,7 @@ function SearchPageClient() {
   const [youtubeError, setYoutubeError] = useState<string | null>(null);
   const [youtubeWarning, setYoutubeWarning] = useState<string | null>(null);
   const [youtubeContentType, setYoutubeContentType] = useState<'all' | 'music' | 'movie' | 'educational' | 'gaming' | 'sports' | 'news'>('all');
+  const [youtubeSortOrder, setYoutubeSortOrder] = useState<'relevance' | 'date' | 'rating' | 'viewCount' | 'title'>('relevance');
   // 聚合卡片 refs 与聚合统计缓存
   const groupRefs = useRef<Map<string, React.RefObject<VideoCardHandle>>>(new Map());
   const groupStatsRef = useRef<Map<string, { douban_id?: number; episodes?: number; source_names: string[] }>>(new Map());
@@ -655,7 +656,7 @@ function SearchPageClient() {
   };
 
   // YouTube搜索函数
-  const handleYouTubeSearch = async (query: string, contentType = youtubeContentType) => {
+  const handleYouTubeSearch = async (query: string, contentType = youtubeContentType, sortOrder = youtubeSortOrder) => {
     if (!query.trim()) return;
 
     setYoutubeLoading(true);
@@ -664,10 +665,13 @@ function SearchPageClient() {
     setYoutubeResults(null);
 
     try {
-      // 构建搜索URL，包含内容类型参数
+      // 构建搜索URL，包含内容类型和排序参数
       let searchUrl = `/api/youtube/search?q=${encodeURIComponent(query.trim())}`;
       if (contentType && contentType !== 'all') {
         searchUrl += `&contentType=${contentType}`;
+      }
+      if (sortOrder && sortOrder !== 'relevance') {
+        searchUrl += `&order=${sortOrder}`;
       }
       const response = await fetch(searchUrl);
       const data = await response.json();
@@ -843,6 +847,7 @@ function SearchPageClient() {
                     setYoutubeError(null);
                     setYoutubeWarning(null);
                     setYoutubeResults(null);
+                    // 注意：不重置排序和内容类型，保持用户选择
                     setNetdiskResults(null);
                     setNetdiskError(null);
                     setNetdiskTotal(0);
@@ -973,7 +978,7 @@ function SearchPageClient() {
                             setYoutubeContentType(type.key as any);
                             const currentQuery = searchQuery.trim() || searchParams?.get('q');
                             if (currentQuery) {
-                              handleYouTubeSearch(currentQuery, type.key as any);
+                              handleYouTubeSearch(currentQuery, type.key as any, youtubeSortOrder);
                             }
                           }}
                           className={`px-3 py-1 text-sm rounded-full border transition-colors ${
@@ -986,6 +991,40 @@ function SearchPageClient() {
                           {type.label}
                         </button>
                       ))}
+                    </div>
+                    
+                    {/* 排序选择器 */}
+                    <div className='mt-3 flex items-center gap-3'>
+                      <span className='text-sm text-gray-600 dark:text-gray-400'>排序：</span>
+                      <div className='flex flex-wrap gap-2'>
+                        {[
+                          { key: 'relevance', label: '相关性' },
+                          { key: 'date', label: '最新发布', icon: '🕒' },
+                          { key: 'viewCount', label: '观看次数', icon: '👀' },
+                          { key: 'rating', label: '评分', icon: '⭐' },
+                          { key: 'title', label: '标题', icon: '🔤' }
+                        ].map((sort) => (
+                          <button
+                            key={sort.key}
+                            onClick={() => {
+                              setYoutubeSortOrder(sort.key as any);
+                              const currentQuery = searchQuery.trim() || searchParams?.get('q');
+                              if (currentQuery) {
+                                handleYouTubeSearch(currentQuery, youtubeContentType, sort.key as any);
+                              }
+                            }}
+                            className={`px-2 py-1 text-xs rounded border transition-colors flex items-center gap-1 ${
+                              youtubeSortOrder === sort.key
+                                ? 'bg-blue-500 text-white border-blue-500'
+                                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-700'
+                            }`}
+                            disabled={youtubeLoading}
+                          >
+                            {sort.icon && <span>{sort.icon}</span>}
+                            <span>{sort.label}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                   
@@ -1008,7 +1047,7 @@ function SearchPageClient() {
                         onClick={() => {
                           const currentQuery = searchQuery.trim() || searchParams?.get('q');
                           if (currentQuery) {
-                            handleYouTubeSearch(currentQuery);
+                            handleYouTubeSearch(currentQuery, youtubeContentType, youtubeSortOrder);
                           }
                         }}
                         className='px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors'
